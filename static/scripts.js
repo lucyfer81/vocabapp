@@ -119,6 +119,17 @@ function speakWord(word) {
     window.speechSynthesis.speak(utterance);
 }
 
+// 语音播报反馈
+function speakFeedback(message) {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'zh-CN';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.2;
+        speechSynthesis.speak(utterance);
+    }
+}
+
 async function submitAnswer(wordId) {
     console.log('submitAnswer called with wordId:', wordId);
     console.log('words[currentIndex]:', words[currentIndex]);
@@ -169,13 +180,22 @@ async function submitAnswer(wordId) {
         if (response.ok) {
             feedbackDiv.textContent = data.message;
             feedbackDiv.style.color = data.correct ? '#28a745' : '#d33';
+            
+            // 语音播报结果
+            if (data.correct) {
+                speakFeedback('太棒了！答对了！');
+            } else {
+                speakFeedback('再试试看，加油！');
+            }
+            
             setTimeout(() => {
                 currentIndex++;
                 showWordCard(currentIndex);
-            }, 1000);
+            }, 1500);
         } else {
             feedbackDiv.textContent = data.error || '提交失败';
             feedbackDiv.style.color = '#d33';
+            speakFeedback('请输入答案哦');
             submitButton.disabled = false;
             answerInput.disabled = false;
         }
@@ -197,5 +217,26 @@ if (document.getElementById('register-form')) {
 // 登录页面
 if (document.getElementById('login-form')) {
     console.log('Login form detected');
+    
+    // 记住用户名功能
+    const usernameInput = document.getElementById('username');
+    const rememberCheckbox = document.getElementById('remember-me');
+    
+    // 加载保存的用户名
+    const savedUsername = localStorage.getItem('savedUsername');
+    if (savedUsername) {
+        usernameInput.value = savedUsername;
+        rememberCheckbox.checked = true;
+    }
+    
     submitForm('login-form', '/login', '/');
+    
+    // 保存用户名
+    document.getElementById('login-form').addEventListener('submit', function() {
+        if (rememberCheckbox.checked) {
+            localStorage.setItem('savedUsername', usernameInput.value);
+        } else {
+            localStorage.removeItem('savedUsername');
+        }
+    });
 }
