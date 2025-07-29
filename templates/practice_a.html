@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>填空模式 - {{ wordbook.title }} - {{ unit }}</title>
+
+    <link rel="stylesheet" href="/static/pico.min.css">
+
+    <link rel="stylesheet" href="/static/custom.css">
+
+    </head>
+
+    <body>
+
+    <main class="container">
+
+    <h1>{{ wordbook.title }} - {{ unit }} - 填空模式</h1>
+
+    <div id="progress">第 <span id="current">1</span> / {{ words|length }} 题</div>
+
+    <div id="word-cards">
+
+<!-- 动态显示当前卡片 -->
+
+    </div>
+
+    <button id="complete-btn" class="btn" style="display: none;">完成练习</button>
+
+    <a href="{{ url_for('wordbook_detail', id=wordbook.id) }}" class="btn">返回</a>
+
+    <div id="message"></div>
+
+    </main>
+
+    <script src="/static/scripts.js"></script>
+
+    <script>
+
+    const words = {{ words | tojson }};
+
+    let currentIndex = 0;
+
+  
+
+function showWordCard(index) {
+
+const cardContainer = document.getElementById('word-cards');
+
+if (index >= words.length) {
+
+cardContainer.innerHTML = '<p>练习已完成！</p>';
+
+document.getElementById('complete-btn').style.display = 'block';
+
+return;
+
+}
+
+const word = words[index];
+
+cardContainer.innerHTML = `
+
+<div class="card word-card">
+
+<p>中文释义：${word.chinese}</p>
+
+<p>单词：${word.partial}</p>
+
+<input type="text" id="answer" name="answer" required maxlength="50">
+
+<button type="button" class="btn" onclick="speakWord('${word.english}')">朗读</button>
+
+<button type="button" class="btn" onclick="submitAnswer(${word.id})">提交</button>
+
+<div class="feedback"></div>
+
+</div>
+
+`;
+
+document.getElementById('current').textContent = index + 1;
+
+}
+
+  
+
+showWordCard(currentIndex);
+
+</script>
+
+</body>
+
+</html>

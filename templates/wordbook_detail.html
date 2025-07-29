@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词书详情 - {{ wordbook.title }}</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>{{ wordbook.title }}</h1>
+        <div class="card-container">
+            {% for unit in units %}
+            <div class="card">
+                <h3>{{ unit.unit }}</h3>
+                <p>单词数：{{ unit.word_count }}</p>
+                <p>填空模式状态：{{ '已完成' if unit.is_completed_a else '未完成' }}</p>
+                <p>背单词模式状态：{{ '已完成' if unit.is_completed_b else '未完成' }}</p>
+                <a href="{{ url_for('practice_a', id=wordbook.id, unit=unit.unit) }}" class="btn">开始练习（填空模式）</a>
+                {% if unit.is_completed_a %}
+                <a href="{{ url_for('practice_b', id=wordbook.id, unit=unit.unit) }}" class="btn">开始练习（背单词模式）</a>
+                {% else %}
+                <p>背单词模式未解锁，请先完成填空模式</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <p>暂无单元</p>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('wordbook_select', id=wordbook.id) }}" class="btn" onclick="selectWordbook({{ wordbook.id }})">选择学习</a>
+        <a href="{{ url_for('review', wordbook_id=wordbook.id) }}" class="btn">今日复习</a>
+        <a href="{{ url_for('wordbook_list') }}" class="btn">返回列表</a>
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>欢迎，{{ username }}！</h1>
+        <p>这里是背单词应用的主页面。</p>
+        <a href="{{ url_for('wordbook_list') }}" class="btn">查看单词书</a>
+        <a href="{{ url_for('logout') }}" class="btn">退出登录</a>
+        <p><a href="#" onclick="promptReview()">查看今日复习</a></p>
+        {% if is_admin %}
+        <p><a href="{{ url_for('admin_user_progress') }}" class="btn">查看用户进度</a></p>
+        {% endif %}
+    </main>
+    <script>
+        function promptReview() {
+            const wordbookId = prompt('请输入单词书ID：');
+            if (wordbookId && !isNaN(wordbookId)) {
+                window.location.href = '/review/' + wordbookId;
+            } else {
+                alert('请输入有效的单词书ID');
+            }
+        }
+    </script>
+</body>
+</html>

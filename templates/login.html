@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>登录</h1>
+        <form id="login-form" onsubmit="return false;">
+            <label for="username">用户名</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">密码</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">登录</button>
+        </form>
+        <p><a href="{{ url_for('register') }}">没有账户？去注册</a></p>
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+</body>
+</html>

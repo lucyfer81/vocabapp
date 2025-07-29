@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词书列表 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>单词书列表</h1>
+        {% if is_admin %}
+        <a href="{{ url_for('wordbook_create') }}" class="btn">创建新单词书</a>
+        <a href="{{ url_for('index') }}" class="btn">返回主页</a>
+        {% else %}
+        <a href="{{ url_for('index') }}" class="btn">返回主页</a>
+        {% endif %}
+        <div class="card-container">
+            {% for wordbook in wordbooks %}
+            <div class="card">
+                <h3>{{ wordbook.title }}</h3>
+                <p>创建时间：{{ wordbook.created_at }}</p>
+                {% if is_admin %}
+                <div class="card-actions">
+                    <a href="{{ url_for('wordbook_edit', id=wordbook.id) }}" class="btn">编辑</a>
+                    <button onclick="deleteWordbook({{ wordbook.id }})" class="btn btn-danger">删除</button>
+                </div>
+                {% else %}
+                <div class="card-actions">
+                    <a href="{{ url_for('wordbook_detail', id=wordbook.id) }}" class="btn">选择学习</a>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p>暂无单词书</p>
+            {% endfor %}
+        </div>
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+</body>
+</html>

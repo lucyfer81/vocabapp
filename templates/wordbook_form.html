@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建单词书 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>创建单词书</h1>
+        <div class="card">
+            <form id="wordbook-form" onsubmit="return false;">
+                <label for="title">标题</label>
+                <input type="text" id="title" name="title" required maxlength="100">
+                <button type="submit">创建</button>
+            </form>
+            <a href="{{ url_for('wordbook_list') }}" class="btn">返回列表</a>
+        </div>
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+    <script>
+        submitForm('wordbook-form', '/wordbook/create', '/wordbook/list');
+    </script>
+</body>
+</html>

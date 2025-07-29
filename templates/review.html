@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日复习 - {{ wordbook.title }}</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>{{ wordbook.title }} - 今日复习</h1>
+        <div class="card-container">
+            {% for unit in units %}
+            <div class="card">
+                <h3>{{ unit.unit }}</h3>
+                <p>错题数：{{ unit.mistake_count }}</p>
+                <a href="{{ url_for('review_mode_b', id=wordbook.id, unit=unit.unit) }}" class="btn">复习（背单词模式）</a>
+            </div>
+            {% else %}
+            <p>当前单词书没有错题</p>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('wordbook_detail', id=wordbook.id) }}" class="btn">返回</a>
+        <div id="message"></div>
+    </main>
+</body>
+</html>

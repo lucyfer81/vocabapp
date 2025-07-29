@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户进度管理 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container admin-user-progress">
+        <h1>用户进度管理</h1>
+        <div class="table-container">
+            <table class="progress-table">
+                <thead>
+                    <tr>
+                        <th class="col-username sticky">用户名</th>
+                        <th class="col-wordbook">单词书</th>
+                        <th class="col-unit">单元</th>
+                        <th class="col-status">填空模式状态</th>
+                        <th class="col-status">背单词模式状态</th>
+                        <th class="col-count">填空正确</th>
+                        <th class="col-count">填空错误</th>
+                        <th class="col-count">背单词正确</th>
+                        <th class="col-count">背单词错误</th>
+                        <th class="col-date">最后尝试</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    {% for progress in user.progress %}
+                    <tr>
+                        <td class="col-username sticky">{{ user.username }}</td>
+                        <td class="col-wordbook">{{ progress.wordbook_title }}</td>
+                        <td class="col-unit">{{ progress.unit }}</td>
+                        <td class="col-status">{{ '已完成' if progress.is_completed_a else '未完成' }}</td>
+                        <td class="col-status">{{ '已完成' if progress.is_completed_b else '未完成' }}</td>
+                        <td class="col-count">{{ progress.correct_count_a }}</td>
+                        <td class="col-count">{{ progress.incorrect_count_a }}</td>
+                        <td class="col-count">{{ progress.correct_count_b }}</td>
+                        <td class="col-count">{{ progress.incorrect_count_b }}</td>
+                        <td class="col-date">{{ progress.last_attempted }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn">回到主页</a>
+    </main>
+</body>
+</html>

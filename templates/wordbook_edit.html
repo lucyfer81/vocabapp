@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑单词书 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>编辑单词书：{{ wordbook.title }}</h1>
+        <div class="card">
+            <form id="wordbook-edit-form" onsubmit="return false;">
+                <label for="title">标题</label>
+                <input type="text" id="title" name="title" value="{{ wordbook.title }}" required maxlength="100">
+                <h3>单词列表</h3>
+                <div id="word-cards">
+                    {% for word in words %}
+                    <div class="card word-card" data-id="{{ word.id }}">
+                        <input type="hidden" name="words[{{ loop.index0 }}][id]" value="{{ word.id }}">
+                        <label>单元</label>
+                        <input type="text" name="words[{{ loop.index0 }}][unit]" value="{{ word.unit }}" required maxlength="50">
+                        <label>英文</label>
+                        <input type="text" name="words[{{ loop.index0 }}][english]" value="{{ word.english }}" required maxlength="50">
+                        <label>中文</label>
+                        <input type="text" name="words[{{ loop.index0 }}][chinese]" value="{{ word.chinese }}" required maxlength="50">
+                        <button type="button" class="btn btn-danger" onclick="deleteWordCard(this, {{ word.id }})">删除</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn" onclick="addWordCard()">添加新单词</button>
+                <button type="submit">保存所有更改</button>
+            </form>
+            <a href="{{ url_for('wordbook_list') }}" class="btn">返回列表</a>
+        </div>
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+    <script>
+        submitForm('wordbook-edit-form', '/wordbook/{{ wordbook.id }}/edit', '/wordbook/list');
+    </script>
+</body>
+</html>
