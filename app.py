@@ -395,6 +395,28 @@ def practice_a_submit(id, unit):
             db.session.rollback()
             return jsonify({'error': '服务器错误，请稍后重试'}), 500
 
+@app.route('/wordbook/<int:id>/practice_a/<unit>/complete', methods=['POST'])
+@login_required
+def practice_a_complete(id, unit):
+    logger.debug(f'Received request to /wordbook/{id}/practice_a/{unit}/complete')
+    with app.app_context():
+        try:
+            progress = UserWordProgress.query.filter_by(
+                user_id=session['user_id'], wordbook_id=id, unit=unit
+            ).first_or_404()
+            progress.is_completed_a = 1
+            progress.last_attempted = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            db.session.commit()
+            logger.info(f'Practice A completed for wordbook {id}, unit {unit} for user {session["user_id"]}')
+            return jsonify({
+                'message': '练习完成！现在可以开始第二阶段的练习了。',
+                'redirect_url': url_for('wordbook_detail', id=id)
+            }), 200
+        except Exception as e:
+            logger.error(f'Error completing practice A: {str(e)}')
+            db.session.rollback()
+            return jsonify({'error': '服务器错误，请稍后重试'}), 500
+
 @app.route('/wordbook/<int:id>/practice_b/<unit>', methods=['GET'])
 @login_required
 def practice_b(id, unit):
@@ -650,4 +672,4 @@ def admin_user_progress():
         return render_template('admin_user_progress.html', users=user_progress_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
