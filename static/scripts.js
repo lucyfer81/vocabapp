@@ -240,3 +240,43 @@ if (document.getElementById('login-form')) {
         }
     });
 }
+
+// 完成练习按钮
+const completeBtn = document.getElementById('complete-btn');
+if (completeBtn) {
+    completeBtn.addEventListener('click', async () => {
+        console.log('Complete button clicked');
+        const messageDiv = document.getElementById('message');
+        if (!words || words.length === 0) {
+            messageDiv.textContent = '没有单词信息，无法完成练习';
+            return;
+        }
+        const wordbookId = words[0].wordbook_id;
+        const unit = words[0].unit;
+        const url = `/wordbook/${wordbookId}/practice_a/${encodeURIComponent(unit)}/complete`;
+        
+        completeBtn.disabled = true;
+        messageDiv.textContent = '正在提交...';
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            console.log('Response:', data);
+            if (response.ok) {
+                messageDiv.textContent = data.message;
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1500);
+            } else {
+                messageDiv.textContent = data.error || '操作失败';
+                completeBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            messageDiv.textContent = '网络错误，请稍后重试';
+            completeBtn.disabled = false;
+        }
+    });
+}
