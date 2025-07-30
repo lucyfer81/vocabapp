@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Python virtual environment
 .venv/
 venv/
@@ -24,3 +25,22 @@ __pycache__/
 # Editor-specific folders
 .vscode/
 .idea/
+=======
+# Virtual Environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Instance folder (for Flask)
+instance/
+
+# Database file
+wordbook.db
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+>>>>>>> b21f879652152622492b5132a7db268ee3e4a6ac
