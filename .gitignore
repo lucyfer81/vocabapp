@@ -1,0 +1,26 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database files
+*.db
+*.sqlite3
+
+# Instance folder (often contains sensitive config or db)
+/instance/
+
+# Environment variables file
+.env
+
+# Log files
+*.log
+
+# Editor-specific folders
+.vscode/
+.idea/
