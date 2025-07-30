@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
-from models import User, WordBook, Word, UserWordProgress, UserWordMistake
+from models import User, WordBook, Word, UserWordProgress, UserWordMistake, DeviceAuth
 import re
 import datetime
 import os
@@ -98,28 +98,109 @@ def login():
     logger.debug('Received request to /login')
     if request.method == 'POST':
         logger.debug('Processing POST request for /login')
-        data = request.form
-        logger.debug(f'Form data: {data}')
+        
+        # 支持JSON和表单两种提交方式
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form
+            
+        logger.debug(f'Received data: {data}')
         username = data.get('username')
         password = data.get('password')
+        device_fingerprint = data.get('device_fingerprint')
+        device_name = data.get('device_name', '未知设备')
+        
         if not username or not password:
             logger.warning('Username or password empty')
             return jsonify({'error': '用户名和密码不能为空'}), 400
+            
         with app.app_context():
             try:
                 user = User.query.filter_by(username=username).first()
                 if not user or not check_password_hash(user.password_hash, password):
                     logger.warning(f'Login failed for username: {username}')
                     return jsonify({'error': '用户名或密码错误'}), 401
+                
                 session['user_id'] = user.id
                 session['username'] = user.username
                 logger.info(f'User logged in: {username}')
+                
+                # 如果提供了设备指纹，创建或更新设备授权
+                if device_fingerprint:
+                    auth_token = generate_auth_token()
+                    device_auth = DeviceAuth.query.filter_by(
+                        user_id=user.id,
+                        device_fingerprint=device_fingerprint
+                    ).first()
+                    
+                    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    if device_auth:
+                        device_auth.auth_token = auth_token
+                        device_auth.last_used = current_time
+                        device_auth.device_name = device_name
+                    else:
+                        device_auth = DeviceAuth(
+                            user_id=user.id,
+                            device_fingerprint=device_fingerprint,
+                            device_name=device_name,
+                            auth_token=auth_token,
+                            created_at=current_time,
+                            last_used=current_time,
+                            is_active=1
+                        )
+                        db.session.add(device_auth)
+                    
+                    db.session.commit()
+                    
                 return jsonify({'message': '登录成功'}), 200
             except Exception as e:
                 logger.error(f'Error during login: {str(e)}')
                 return jsonify({'error': '服务器错误，请稍后重试'}), 500
     logger.debug('Rendering login.html')
     return render_template('login.html')
+
+@app.route('/check_device_auth', methods=['POST'])
+def check_device_auth():
+    """检查设备授权并实现自动登录"""
+    logger.debug('Received request to /check_device_auth')
+    
+    if not request.is_json:
+        return jsonify({'error': '需要JSON数据'}), 400
+        
+    data = request.get_json()
+    device_fingerprint = data.get('device_fingerprint')
+    
+    if not device_fingerprint:
+        return jsonify({'error': '设备指纹不能为空'}), 400
+        
+    with app.app_context():
+        try:
+            device_auth = DeviceAuth.query.filter_by(
+                device_fingerprint=device_fingerprint,
+                is_active=1
+            ).first()
+            
+            if device_auth:
+                user = User.query.get(device_auth.user_id)
+                if user:
+                    session['user_id'] = user.id
+                    session['username'] = user.username
+                    device_auth.last_used = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    db.session.commit()
+                    logger.info(f'Auto-login successful for user: {user.username}')
+                    return jsonify({'success': True, 'token': device_auth.auth_token})
+            
+            return jsonify({'success': False})
+        except Exception as e:
+            logger.error(f'Error checking device auth: {str(e)}')
+            return jsonify({'error': '服务器错误'}), 500
+
+def generate_auth_token():
+    """生成安全的授权令牌"""
+    import secrets
+    return secrets.token_urlsafe(32)
 
 @app.route('/logout')
 def logout():

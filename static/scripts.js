@@ -214,9 +214,62 @@ if (document.getElementById('register-form')) {
     submitForm('register-form', '/register', '/login');
 }
 
+// 生成设备指纹
+async function generateDeviceFingerprint() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('设备指纹测试', 2, 2);
+    
+    const canvasData = canvas.toDataURL();
+    const screenInfo = `${screen.width}x${screen.height}`;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const language = navigator.language;
+    const platform = navigator.platform;
+    
+    const combinedString = `${canvasData}|${screenInfo}|${timezone}|${language}|${platform}`;
+    
+    // 使用Web Crypto API生成哈希
+    const encoder = new TextEncoder();
+    const data = encoder.encode(combinedString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return hashHex;
+}
+
+// 检查设备授权并自动登录
+async function checkDeviceAuth() {
+    try {
+        const deviceFingerprint = await generateDeviceFingerprint();
+        const response = await fetch('/check_device_auth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                device_fingerprint: deviceFingerprint
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success && data.token) {
+            // 自动登录成功
+            window.location.href = '/';
+        }
+    } catch (error) {
+        console.log('设备自动登录检查失败，需要手动登录');
+    }
+}
+
 // 登录页面
 if (document.getElementById('login-form')) {
     console.log('Login form detected');
+    
+    // 检查自动登录
+    checkDeviceAuth();
     
     // 记住用户名功能
     const usernameInput = document.getElementById('username');
@@ -229,10 +282,42 @@ if (document.getElementById('login-form')) {
         rememberCheckbox.checked = true;
     }
     
-    submitForm('login-form', '/login', '/');
+    // 修改登录事件处理
+    const loginForm = document.getElementById('login-form');
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const username = usernameInput.value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const deviceFingerprint = await generateDeviceFingerprint();
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    device_fingerprint: deviceFingerprint,
+                    device_name: '儿子的iPad' // 可以自定义设备名称
+                })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                document.getElementById('message').textContent = data.error;
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            document.getElementById('message').textContent = '登录失败，请重试';
+        }
+    });
     
     // 保存用户名
-    document.getElementById('login-form').addEventListener('submit', function() {
+    loginForm.addEventListener('submit', function() {
         if (rememberCheckbox.checked) {
             localStorage.setItem('savedUsername', usernameInput.value);
         } else {
