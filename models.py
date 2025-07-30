@@ -62,3 +62,17 @@ class UserWordMistake(db.Model):
 
     # Add relationship to Word
     word = db.relationship('Word', backref='mistakes')
+
+class DeviceAuth(db.Model):
+    __tablename__ = 'DeviceAuth'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
+    device_fingerprint = db.Column(db.String(255), nullable=False)  # 设备指纹
+    device_name = db.Column(db.String(100))  # 设备名称（如"儿子的iPad"）
+    auth_token = db.Column(db.String(255), unique=True, nullable=False)  # 授权令牌
+    created_at = db.Column(db.String(50), nullable=False)
+    last_used = db.Column(db.String(50))
+    is_active = db.Column(db.Integer, nullable=False, default=1)  # 是否启用
+    
+    __table_args__ = (db.UniqueConstraint('user_id', 'device_fingerprint', name='uix_user_device'),)
