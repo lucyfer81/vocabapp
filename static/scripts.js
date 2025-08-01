@@ -126,6 +126,18 @@ function speakFeedback(message) {
         utterance.lang = 'zh-CN';
         utterance.rate = 0.9;
         utterance.pitch = 1.2;
+        
+        // 明确指定使用普通话语音
+        const voices = speechSynthesis.getVoices();
+        const mandarinVoice = voices.find(voice => 
+            voice.lang.includes('zh-CN') && 
+            (voice.name.includes('Chinese') || voice.name.includes('Mandarin'))
+        );
+        
+        if (mandarinVoice) {
+            utterance.voice = mandarinVoice;
+        }
+        
         speechSynthesis.speak(utterance);
     }
 }
