@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 from database import db
 from models import User, WordBook, Word, UserWordProgress, UserWordMistake, DeviceAuth
 import re
@@ -14,6 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app, origins='*', supports_credentials=True)  # 允许所有来源的跨域请求
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////home/ubuntu/PyProjects/vocabapp/wordbook.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

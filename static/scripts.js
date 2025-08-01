@@ -59,7 +59,7 @@ async function deleteWordbook(id) {
 async function selectWordbook(id) {
     const messageDiv = document.getElementById('message');
     try {
-        const response = await fetch(`/wordbook/${id}/select`, {
+        const response = await fetch(window.location.origin + `/wordbook/${id}/select`, {
             method: 'POST'
         });
         const data = await response.json();
@@ -216,35 +216,52 @@ if (document.getElementById('register-form')) {
 
 // 生成设备指纹
 async function generateDeviceFingerprint() {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('设备指纹测试', 2, 2);
-    
-    const canvasData = canvas.toDataURL();
-    const screenInfo = `${screen.width}x${screen.height}`;
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const language = navigator.language;
-    const platform = navigator.platform;
-    
-    const combinedString = `${canvasData}|${screenInfo}|${timezone}|${language}|${platform}`;
-    
-    // 使用Web Crypto API生成哈希
-    const encoder = new TextEncoder();
-    const data = encoder.encode(combinedString);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    return hashHex;
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillText('设备指纹测试', 2, 2);
+        
+        const canvasData = canvas.toDataURL();
+        const screenInfo = `${screen.width}x${screen.height}`;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const language = navigator.language;
+        const platform = navigator.platform;
+        
+        const combinedString = `${canvasData}|${screenInfo}|${timezone}|${language}|${platform}`;
+        
+        // 检查是否支持Web Crypto API
+        if (window.crypto && window.crypto.subtle) {
+            // 使用Web Crypto API生成哈希
+            const encoder = new TextEncoder();
+            const data = encoder.encode(combinedString);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        } else {
+            // 简单的备用方案
+            let hash = 0;
+            for (let i = 0; i < combinedString.length; i++) {
+                const char = combinedString.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // 转换为32位整数
+            }
+            return Math.abs(hash).toString(16);
+        }
+    } catch (error) {
+        console.error('生成设备指纹失败:', error);
+        // 返回一个基于时间的简单指纹
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
 }
 
 // 检查设备授权并自动登录
 async function checkDeviceAuth() {
     try {
         const deviceFingerprint = await generateDeviceFingerprint();
-        const response = await fetch('/check_device_auth', {
+        const response = await fetch(window.location.origin + '/check_device_auth', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -291,7 +308,7 @@ if (document.getElementById('login-form')) {
         
         try {
             const deviceFingerprint = await generateDeviceFingerprint();
-            const response = await fetch('/login', {
+            const response = await fetch(window.location.origin + '/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
