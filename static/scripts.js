@@ -127,18 +127,44 @@ function speakFeedback(message) {
         utterance.rate = 0.9;
         utterance.pitch = 1.2;
         
-        // 明确指定使用普通话语音
-        const voices = speechSynthesis.getVoices();
-        const mandarinVoice = voices.find(voice => 
-            voice.lang.includes('zh-CN') && 
-            (voice.name.includes('Chinese') || voice.name.includes('Mandarin'))
-        );
+        // 等待语音列表加载完成
+        const loadVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            
+            // 优先选择普通话语音
+            const mandarinVoice = voices.find(voice => 
+                (voice.lang.includes('zh-CN') || voice.lang === 'zh') &&
+                (voice.name.includes('Chinese') || 
+                 voice.name.includes('Mandarin') || 
+                 voice.name.includes('普通话') ||
+                 voice.name.includes('中文'))
+            );
+            
+            // 备选：任何中文语音（排除粤语）
+            const chineseVoice = voices.find(voice =>
+                (voice.lang.includes('zh-CN') || voice.lang === 'zh') &&
+                !voice.lang.includes('zh-HK') &&
+                !voice.lang.includes('zh-TW') &&
+                !voice.name.includes('Cantonese') &&
+                !voice.name.includes('粤语')
+            );
+            
+            if (mandarinVoice) {
+                utterance.voice = mandarinVoice;
+            } else if (chineseVoice) {
+                utterance.voice = chineseVoice;
+            }
+            
+            speechSynthesis.speak(utterance);
+        };
         
-        if (mandarinVoice) {
-            utterance.voice = mandarinVoice;
+        // 如果语音列表已加载，直接使用
+        if (speechSynthesis.getVoices().length > 0) {
+            loadVoices();
+        } else {
+            // 等待语音列表加载
+            speechSynthesis.addEventListener('voiceschanged', loadVoices);
         }
-        
-        speechSynthesis.speak(utterance);
     }
 }
 
