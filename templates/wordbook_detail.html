@@ -30,9 +30,107 @@
         </div>
         <a href="{{ url_for('wordbook_select', id=wordbook.id) }}" class="btn" onclick="selectWordbook({{ wordbook.id }})">选择学习</a>
         <a href="{{ url_for('review', wordbook_id=wordbook.id) }}" class="btn">今日复习</a>
+        {% if is_admin %}
+        <button onclick="showImportDialog()" class="btn">导入单词</button>
+        <a href="{{ url_for('wordbook_edit', id=wordbook.id) }}" class="btn">编辑单词书</a>
+        {% endif %}
         <a href="{{ url_for('wordbook_list') }}" class="btn">返回列表</a>
         <div id="message"></div>
     </main>
+    
+    <!-- CSV导入对话框 -->
+    <div id="import-dialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%;">
+            <h3>导入单词数据</h3>
+            <p>请上传CSV格式的单词文件，格式如下：</p>
+            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">unit,english,chinese
+Unit 1,apple,苹果
+Unit 1,banana,香蕉
+Unit 2,computer,电脑</pre>
+            
+            <form id="csv-import-form" onsubmit="return false;">
+                <input type="file" id="csv-file" name="csv_file" accept=".csv" required style="margin: 10px 0;">
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="hideImportDialog()" style="background: #ccc;">取消</button>
+                    <button type="submit">导入</button>
+                </div>
+            </form>
+            
+            <div id="import-result"></div>
+        </div>
+    </div>
+    
     <script src="/static/scripts.js"></script>
+    <script>
+        function showImportDialog() {
+            document.getElementById('import-dialog').style.display = 'block';
+        }
+        
+        function hideImportDialog() {
+            document.getElementById('import-dialog').style.display = 'none';
+            document.getElementById('import-result').innerHTML = '';
+            document.getElementById('csv-file').value = '';
+        }
+        
+        // 处理CSV导入
+        document.getElementById('csv-import-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const response = await fetch(`/wordbook/import_csv/{{ wordbook.id }}`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                let resultHtml = `<div style="color: green; margin: 10px 0;">${result.message}</div>`;
+                
+                if (result.errors && result.errors.length > 0) {
+                    resultHtml += '<div style="color: red; margin: 10px 0;"><h4>错误详情：</h4><ul style="font-size: 12px;">';
+                    result.errors.forEach(error => {
+                        resultHtml += `<li>${error}</li>`;
+                    });
+                    resultHtml += '</ul></div>';
+                }
+                
+                document.getElementById('import-result').innerHTML = resultHtml;
+                
+                // 3秒后刷新页面
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+                
+            } else {
+                document.getElementById('import-result').innerHTML = `<div style="color: red; margin: 10px 0;">${result.error}</div>`;
+            }
+        });
+        
+        async function selectWordbook(wordbookId) {
+            const response = await fetch(`/wordbook/${wordbookId}/select`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showMessage('message', result.message, 'success');
+            } else {
+                showMessage('message', result.error, 'error');
+            }
+        }
+        
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+    </script>
 </body>
 </html>

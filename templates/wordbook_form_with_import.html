@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建单词书 - 背单词应用</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/custom.css">
+</head>
+<body>
+    <main class="container">
+        <h1>创建单词书</h1>
+        <div class="card">
+            <form id="wordbook-form" onsubmit="return false;">
+                <label for="title">标题</label>
+                <input type="text" id="title" name="title" required maxlength="100">
+                <button type="submit">创建</button>
+            </form>
+            <a href="{{ url_for('wordbook_list') }}" class="btn">返回列表</a>
+        </div>
+        
+        <!-- CSV导入区域 -->
+        <div id="csv-import-section" style="display: none;" class="card">
+            <h2>导入单词数据</h2>
+            <p>请上传CSV格式的单词文件，格式如下：</p>
+            <pre>unit,english,chinese
+Unit 1,apple,苹果
+Unit 1,banana,香蕉
+Unit 2,computer,电脑</pre>
+            
+            <form id="csv-import-form" onsubmit="return false;">
+                <input type="file" id="csv-file" name="csv_file" accept=".csv" required>
+                <button type="submit">导入单词</button>
+            </form>
+            
+            <div id="import-result"></div>
+        </div>
+        
+        <div id="message"></div>
+    </main>
+    <script src="/static/scripts.js"></script>
+    <script>
+        let currentWordbookId = null;
+        
+        // 处理单词书创建
+        document.getElementById('wordbook-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const response = await fetch('/wordbook/create', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showMessage('message', result.message, 'success');
+                currentWordbookId = result.wordbook_id || getWordbookIdFromResponse(result);
+                document.getElementById('csv-import-section').style.display = 'block';
+                document.getElementById('wordbook-form').style.display = 'none';
+            } else {
+                showMessage('message', result.error, 'error');
+            }
+        });
+        
+        // 处理CSV导入
+        document.getElementById('csv-import-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentWordbookId) {
+                showMessage('import-result', '请先创建单词书', 'error');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            const response = await fetch(`/wordbook/import_csv/${currentWordbookId}`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                let resultHtml = `<div class="success">${result.message}</div>`;
+                
+                if (result.errors && result.errors.length > 0) {
+                    resultHtml += '<div class="error"><h4>错误详情：</h4><ul>';
+                    result.errors.forEach(error => {
+                        resultHtml += `<li>${error}</li>`;
+                    });
+                    resultHtml += '</ul></div>';
+                }
+                
+                document.getElementById('import-result').innerHTML = resultHtml;
+                
+                // 清空文件输入
+                document.getElementById('csv-file').value = '';
+                
+                // 显示继续按钮
+                resultHtml += `<div style="margin-top: 20px;">
+                    <a href="/wordbook/${currentWordbookId}" class="btn">查看单词书</a>
+                    <a href="/wordbook/list" class="btn">返回列表</a>
+                </div>`;
+                document.getElementById('import-result').innerHTML = resultHtml;
+                
+            } else {
+                showMessage('import-result', result.error, 'error');
+            }
+        });
+        
+        // 从响应中获取单词书ID（模拟，实际需要后端返回）
+        function getWordbookIdFromResponse(result) {
+            // 这里应该从后端响应中获取ID，现在先使用临时方法
+            return 1; // 临时返回，需要后端支持
+        }
+        
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

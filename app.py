@@ -9,6 +9,8 @@ import os
 import logging
 import math
 import random
+import csv
+import io
 
 # 配置日志
 logging.basicConfig(level=logging.DEBUG)
@@ -219,6 +221,160 @@ def wordbook_list():
         is_admin = session['username'] == 'admin'
         return render_template('wordbook_list.html', wordbooks=wordbooks, is_admin=is_admin)
 
+@app.route('/wordbook/import_csv/<int:wordbook_id>', methods=['POST'])
+@login_required
+@admin_required
+def import_csv_words(wordbook_id):
+    """管理员导入CSV格式的单词数据"""
+    logger.debug(f'Received CSV import request for wordbook {wordbook_id}')
+    
+    if 'csv_file' not in request.files:
+        logger.warning('No CSV file uploaded')
+        return jsonify({'error': '请选择CSV文件'}), 400
+    
+    file = request.files['csv_file']
+    if file.filename == '':
+        logger.warning('No file selected')
+        return jsonify({'error': '请选择CSV文件'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        logger.warning(f'Invalid file type: {file.filename}')
+        return jsonify({'error': '请上传CSV格式的文件'}), 400
+    
+    try:
+        # 读取CSV文件内容
+        content = file.read()
+        logger.info(f'文件大小: {len(content)} 字节')
+        
+        # 尝试不同的编码
+        encodings = ['utf-8', 'utf-8-sig', 'gbk', 'gb2312']
+        decoded_content = None
+        
+        for encoding in encodings:
+            try:
+                decoded_content = content.decode(encoding)
+                logger.info(f'成功使用 {encoding} 编码解码')
+                break
+            except UnicodeDecodeError:
+                logger.warning(f'无法使用 {encoding} 编码解码')
+                continue
+        
+        if decoded_content is None:
+            logger.error('无法解码文件内容')
+            return jsonify({'error': '文件编码不支持，请使用UTF-8编码保存CSV文件'}), 400
+        
+        # 移除BOM头（如果存在）
+        if decoded_content.startswith('\ufeff'):
+            decoded_content = decoded_content[1:]
+            logger.info('移除BOM头')
+        
+        logger.info(f'文件内容前100字符: {repr(decoded_content[:100])}')
+        
+        csv_reader = csv.reader(io.StringIO(decoded_content))
+        
+        # 跳过标题行
+        headers = next(csv_reader, None)
+        if not headers or len(headers) < 3:
+            logger.warning('Invalid CSV format')
+            return jsonify({'error': 'CSV格式错误，至少需要3列数据'}), 400
+        
+        # 验证CSV格式
+        expected_headers = ['unit', 'english', 'chinese']
+        headers_lower = [h.lower().strip() for h in headers]
+        logger.info(f'CSV headers: {headers}')
+        logger.info(f'Headers lower: {headers_lower}')
+        logger.info(f'Expected headers: {expected_headers}')
+        
+        if not all(h.lower() in headers_lower for h in expected_headers):
+            missing_headers = [h for h in expected_headers if h.lower() not in headers_lower]
+            logger.warning(f'Invalid CSV headers: {headers}')
+            logger.warning(f'Missing headers: {missing_headers}')
+            return jsonify({'error': f'CSV标题行必须包含：unit, english, chinese。缺少：{missing_headers}'}), 400
+        
+        # 获取列索引
+        unit_idx = next((i for i, h in enumerate(headers) if h.lower().strip() == 'unit'), 0)
+        english_idx = next((i for i, h in enumerate(headers) if h.lower().strip() == 'english'), 1)
+        chinese_idx = next((i for i, h in enumerate(headers) if h.lower().strip() == 'chinese'), 2)
+        
+        imported_count = 0
+        errors = []
+        
+        with app.app_context():
+            wordbook = WordBook.query.get_or_404(wordbook_id)
+            
+            for row_num, row in enumerate(csv_reader, 2):  # 从第2行开始计数
+                try:
+                    if len(row) < 3:
+                        errors.append(f'第{row_num}行：数据不完整')
+                        continue
+                    
+                    unit = row[unit_idx].strip()
+                    english = row[english_idx].strip()
+                    chinese = row[chinese_idx].strip()
+                    
+                    # 验证数据
+                    if not unit or len(unit) > 50:
+                        errors.append(f'第{row_num}行：单元名称必须在1-50字符之间')
+                        continue
+                    
+                    if not english or len(english) > 50:
+                        errors.append(f'第{row_num}行：英文单词必须在1-50字符之间')
+                        continue
+                    
+                    if not chinese or len(chinese) > 50:
+                        errors.append(f'第{row_num}行：中文释义必须在1-50字符之间')
+                        continue
+                    
+                    # 检查是否已存在相同的单词
+                    existing_word = Word.query.filter_by(
+                        wordbook_id=wordbook_id,
+                        unit=unit,
+                        english=english,
+                        chinese=chinese
+                    ).first()
+                    
+                    if existing_word:
+                        errors.append(f'第{row_num}行：该单词已存在')
+                        continue
+                    
+                    # 创建新单词
+                    new_word = Word(
+                        wordbook_id=wordbook_id,
+                        unit=unit,
+                        english=english,
+                        chinese=chinese,
+                        created_at=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    )
+                    db.session.add(new_word)
+                    imported_count += 1
+                    
+                except Exception as e:
+                    logger.error(f'Error processing row {row_num}: {str(e)}')
+                    errors.append(f'第{row_num}行：处理错误 - {str(e)}')
+                    continue
+            
+            if imported_count > 0:
+                db.session.commit()
+                logger.info(f'Successfully imported {imported_count} words for wordbook {wordbook_id}')
+            else:
+                db.session.rollback()
+                
+        # 返回结果
+        result = {
+            'message': f'成功导入 {imported_count} 个单词',
+            'imported_count': imported_count,
+            'errors': errors
+        }
+        
+        if errors:
+            result['message'] += f'，遇到 {len(errors)} 个错误'
+            
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f'Error during CSV import: {str(e)}')
+        return jsonify({'error': f'导入失败：{str(e)}'}), 500
+
 @app.route('/wordbook/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -243,11 +399,11 @@ def wordbook_create():
                 db.session.add(new_wordbook)
                 db.session.commit()
                 logger.info(f'Wordbook created: {title}')
-                return jsonify({'message': '单词书创建成功'}), 200
+                return jsonify({'message': '单词书创建成功', 'wordbook_id': new_wordbook.id}), 200
             except Exception as e:
                 logger.error(f'Error creating wordbook: {str(e)}')
                 return jsonify({'error': '服务器错误，请稍后重试'}), 500
-    return render_template('wordbook_form.html', mode='create')
+    return render_template('wordbook_form_with_import.html', mode='create')
 
 @app.route('/wordbook/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -350,7 +506,8 @@ def wordbook_detail(id):
                 'is_completed_b': progress_dict.get(unit, {}).get('is_completed_b', 0)
             } for unit, word_count in units
         ]
-        return render_template('wordbook_detail.html', wordbook=wordbook, units=units_data)
+        is_admin = session['username'] == 'admin'
+        return render_template('wordbook_detail.html', wordbook=wordbook, units=units_data, is_admin=is_admin)
 
 @app.route('/wordbook/<int:id>/select', methods=['POST'])
 @login_required
