@@ -114,9 +114,52 @@ function deleteWordCard(button, wordId = null) {
 }
 
 function speakWord(word) {
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.8;  // 稍微降低语速
+        utterance.pitch = 1.0; // 标准音调
+        utterance.volume = 1.0; // 最大音量
+
+        // 尝试获取最佳英语语音
+        const loadVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            
+            // 优先选择高质量的英语语音
+            const englishVoices = voices.filter(voice => 
+                voice.lang.startsWith('en-') && 
+                (voice.name.includes('Natural') || 
+                 voice.name.includes('Neural') || 
+                 voice.name.includes('Premium') ||
+                 voice.name.includes('Enhanced'))
+            );
+            
+            // 备选：任何英语语音
+            const fallbackVoice = voices.find(voice => 
+                voice.lang.startsWith('en-') && 
+                !voice.name.includes('Compact')
+            );
+            
+            if (englishVoices.length > 0) {
+                // 选择第一个高质量语音
+                utterance.voice = englishVoices[0];
+            } else if (fallbackVoice) {
+                utterance.voice = fallbackVoice;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        };
+        
+        // 如果语音列表已加载，直接使用
+        if (speechSynthesis.getVoices().length > 0) {
+            loadVoices();
+        } else {
+            // 等待语音列表加载
+            speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        }
+    } else {
+        console.log('当前浏览器不支持语音合成');
+    }
 }
 
 // 语音播报反馈
@@ -124,12 +167,22 @@ function speakFeedback(message) {
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = 'zh-CN';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.2;
+        utterance.rate = 0.85;  // 适中语速
+        utterance.pitch = 1.0;  // 标准音调
+        utterance.volume = 1.0; // 最大音量
         
         // 等待语音列表加载完成
         const loadVoices = () => {
             const voices = speechSynthesis.getVoices();
+            
+            // 优先选择高质量的普通话语音
+            const premiumVoices = voices.filter(voice => 
+                (voice.lang.includes('zh-CN') || voice.lang === 'zh') &&
+                (voice.name.includes('Premium') || 
+                 voice.name.includes('Natural') || 
+                 voice.name.includes('Neural') ||
+                 voice.name.includes('Enhanced'))
+            );
             
             // 优先选择普通话语音
             const mandarinVoice = voices.find(voice => 
@@ -149,7 +202,10 @@ function speakFeedback(message) {
                 !voice.name.includes('粤语')
             );
             
-            if (mandarinVoice) {
+            if (premiumVoices.length > 0) {
+                // 选择第一个高质量语音
+                utterance.voice = premiumVoices[0];
+            } else if (mandarinVoice) {
                 utterance.voice = mandarinVoice;
             } else if (chineseVoice) {
                 utterance.voice = chineseVoice;
