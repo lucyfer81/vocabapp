@@ -133,17 +133,31 @@ def login():
                 # 如果提供了设备指纹，创建或更新设备授权
                 if device_fingerprint:
                     auth_token = generate_auth_token()
+                    
+                    # 首先检查该设备指纹是否已被其他用户使用
+                    existing_device_auth = DeviceAuth.query.filter_by(
+                        device_fingerprint=device_fingerprint,
+                        is_active=1
+                    ).first()
+                    
+                    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    if existing_device_auth and existing_device_auth.user_id != user.id:
+                        # 设备指纹已被其他用户使用，先禁用旧的授权
+                        logger.warning(f'Device fingerprint {device_fingerprint[:16]}... was associated with user {existing_device_auth.user_id}, now reassigning to user {user.id}')
+                        existing_device_auth.is_active = 0
+                    
+                    # 创建或更新当前用户的设备授权
                     device_auth = DeviceAuth.query.filter_by(
                         user_id=user.id,
                         device_fingerprint=device_fingerprint
                     ).first()
                     
-                    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    
                     if device_auth:
                         device_auth.auth_token = auth_token
                         device_auth.last_used = current_time
                         device_auth.device_name = device_name
+                        device_auth.is_active = 1  # 确保启用
                     else:
                         device_auth = DeviceAuth(
                             user_id=user.id,
@@ -157,6 +171,7 @@ def login():
                         db.session.add(device_auth)
                     
                     db.session.commit()
+                    logger.info(f'Device auth updated for user {user.username} with fingerprint {device_fingerprint[:16]}...')
                     
                 return jsonify({'message': '登录成功'}), 200
             except Exception as e:
@@ -193,9 +208,15 @@ def check_device_auth():
                     session['username'] = user.username
                     device_auth.last_used = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     db.session.commit()
-                    logger.info(f'Auto-login successful for user: {user.username}')
+                    logger.info(f'Auto-login successful for user: {user.username} with device fingerprint: {device_fingerprint[:16]}...')
                     return jsonify({'success': True, 'token': device_auth.auth_token})
+                else:
+                    # 用户不存在，禁用此设备授权
+                    device_auth.is_active = 0
+                    db.session.commit()
+                    logger.warning(f'Device auth found but user not found for fingerprint: {device_fingerprint[:16]}...')
             
+            logger.debug(f'No active device auth found for fingerprint: {device_fingerprint[:16]}...')
             return jsonify({'success': False})
         except Exception as e:
             logger.error(f'Error checking device auth: {str(e)}')

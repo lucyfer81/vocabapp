@@ -318,12 +318,26 @@ async function generateDeviceFingerprint() {
         ctx.fillText('设备指纹测试', 2, 2);
         
         const canvasData = canvas.toDataURL();
-        const screenInfo = `${screen.width}x${screen.height}`;
+        const screenInfo = `${screen.width}x${screen.height}x${screen.colorDepth}`;
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const language = navigator.language;
         const platform = navigator.platform;
+        const userAgent = navigator.userAgent;
+        const hardwareConcurrency = navigator.hardwareConcurrency || 1;
+        const deviceMemory = navigator.deviceMemory || 1;
         
-        const combinedString = `${canvasData}|${screenInfo}|${timezone}|${language}|${platform}`;
+        // 添加更多设备特定信息
+        const now = new Date();
+        const visitTime = now.getTime();
+        const timezoneOffset = now.getTimezoneOffset();
+        
+        // 获取更详细的浏览器信息
+        const cookieEnabled = navigator.cookieEnabled;
+        const doNotTrack = navigator.doNotTrack;
+        const connection = navigator.connection || {};
+        const effectiveType = connection.effectiveType || 'unknown';
+        
+        const combinedString = `${canvasData}|${screenInfo}|${timezone}|${language}|${platform}|${userAgent}|${hardwareConcurrency}|${deviceMemory}|${visitTime}|${timezoneOffset}|${cookieEnabled}|${doNotTrack}|${effectiveType}`;
         
         // 检查是否支持Web Crypto API
         if (window.crypto && window.crypto.subtle) {
@@ -346,8 +360,8 @@ async function generateDeviceFingerprint() {
         }
     } catch (error) {
         console.error('生成设备指纹失败:', error);
-        // 返回一个基于时间的简单指纹
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        // 返回一个基于时间和随机数的唯一指纹
+        return Date.now().toString(36) + Math.random().toString(36).substr(2) + Math.random().toString(36).substr(2);
     }
 }
 
